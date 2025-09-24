@@ -1,6 +1,9 @@
 alias vim = nvim
 alias cdr = cd ~/repos/
 alias cdd = cd ~/repos/dotfiles
+alias zzip = /usr/bin/zip
+alias lg = lazygit
+
 #alias sunset = job spawn { wlsunset -t 2000 -S 07:00 -s 21:00; disown }
 alias sunset = bash -c "wlsunset -t 2000 -S 07:00 -s 21:00 &>/dev/null &"
 

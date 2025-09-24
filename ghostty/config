@@ -43,5 +43,5 @@
 # resize-overlay-duration = 4s 200ms
 
 command = nu
-theme = catppuccin-mocha
+theme = Catppuccin Mocha
 font-size = 16

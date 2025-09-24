@@ -1,1 +1,7 @@
-Answer the users request concisely with little background information and using as few words as possible. Focus more on code examples if relevant. Your answers should fit a single screen so that no scrolling is necessary.
+---
+temperature: 0
+top_p: 0
+
+---
+- name: short
+  prompt: Answer as concisely as possible. Your answer may not exceed 10 lines. Code examples and command listings are preferred, only very brief explanations are allowed.

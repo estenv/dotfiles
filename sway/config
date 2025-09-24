@@ -21,6 +21,11 @@ output $out_side mode 1920x1080@60Hz scale 0.8 pos 3840 0
 output $out_tv mode 1920x1080@29.972Hz scale 0.8 pos 3840 0
 #output DP-1 mode 2560x1440@144 scale 0.9 pos 5760 0 transform 3
 
+input "type:keyboard" {
+    xkb_layout us,fi
+    xkb_options caps:swapescape,grp:alt_shift_toggle
+}
+
 workspace $workspace_term output $out_main
 workspace $workspace_nvim output $out_main
 workspace $workspace_misc output $out_main
@@ -34,10 +39,6 @@ exec swayidle -w \
 
 for_window [window_role="^browser$"] inhibit_idle fullscreen
 for_window [app_id="mpv"] inhibit_idle fullscreen
-
-input "type:keyboard" {
-    xkb_options caps:swapescape
-}
 
 bindsym Shift+Print exec nu ~/.config/nushell/wayland_record.nu
 bindsym Print exec ~/.config/sway/grimshot copy area

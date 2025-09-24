@@ -2,7 +2,7 @@ $env.config.buffer_editor = "nvim"
 $env.config.show_banner = false
 
 $env.PATH ++= ['~/.local/bin']
-
+$env.PATH ++= ['~/.bun/bin']
 zoxide init nushell | save -f ~/.config/zoxide.nu
 
 mkdir ($nu.data-dir | path join "vendor/autoload")
