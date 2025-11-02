@@ -18,6 +18,7 @@ def ai [
 }
 
 source ~/.config/zoxide.nu
-source ~/.cargo/env.nu
-source ~/.config/secrets.nu
-source ~/.config/nushell/theme_mocha.nu
+#source ~/.cargo/env.nu
+#source ~/.config/secrets.nu
+#source ~/.config/nushell/theme_mocha.nu
+source $"($nu.home-path)/.cargo/env.nu"
