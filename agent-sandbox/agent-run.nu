@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 
-def main [...cmd: string] {
+def main --wrapped [...cmd: string] {
     let image_name = 'agent-sandbox-runner'
     let network_name = 'agent-sandbox-internal'
     let repos_root = $env.HOME | path join 'repos' | path expand
@@ -29,7 +29,10 @@ def main [...cmd: string] {
 
     let effective_cmd = if ($cmd | is-empty) { ['pi'] } else { $cmd }
 
-    let ro_mounts = (^nu ./git-ro-mounts.nu | from json)
+    let ro_mounts = (
+        ^nu ($repos_root | path join "dotfiles" "agent-sandbox" "git-ro-mounts.nu")
+        | from json
+    )
 
     let uid = (do -i { ^id -u } | complete).stdout | str trim
     let gid = (do -i { ^id -g } | complete).stdout | str trim

@@ -23,6 +23,8 @@ def ai [
   aichat -r short -s short --save-session ...$file_arg ...$args | glow 
 }
 
+use ~/repos/dotfiles/agent-sandbox/ag.nu *
+
 source ~/.config/zoxide.nu
 #source ~/.cargo/env.nu
 source ~/.config/secrets.nu
