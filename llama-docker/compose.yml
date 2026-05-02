@@ -1,0 +1,59 @@
+services:
+  llamacpp:
+    container_name: llamacpp
+    image: ghcr.io/ggml-org/llama.cpp:server-cuda
+    restart: unless-stopped
+    gpus: all
+    shm_size: "8gb"
+    ipc: host
+    environment:
+    - NVIDIA_VISIBLE_DEVICES=all
+    - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    command:
+    - -m
+    - /models/Qwen3.6-27B-Q4_K_M.gguf
+    - --host
+    - 0.0.0.0
+    - --port
+    - "8000"
+    - --alias
+    - Qwen3.6-27B
+    - --ctx-size
+    - "262144"
+    - --n-gpu-layers
+    - "999"
+    - --parallel
+    - "1"
+    - --threads
+    - "8"
+    - --flash-attn
+    - on
+    - --jinja
+    - --chat-template-file
+    - /models/qwen3.6-chat-template.jinja
+    - --chat-template-kwargs
+    - '{"enable_thinking": true, "preserve-thinking": true}'
+    - --batch-size
+    - "256"
+    - --ubatch-size
+    - "256"
+    - --cache-type-k
+    - q4_0
+    - --cache-type-v
+    - q4_0
+    - --temp
+    - "1.0"
+    - --top-p
+    - "0.95"
+    - --top-k
+    - "20"
+    - --min-p
+    - "0.0"
+    - --presence-penalty
+    - "0.0"
+    - --repeat-penalty
+    - "1.0"
+    volumes:
+    - /home/as/models:/models:ro
+    ports:
+    - 9998:8000

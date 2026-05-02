@@ -1,0 +1,28 @@
+services:
+  egress-proxy:
+    image: ubuntu/squid:7.2-26.04_edge
+    container_name: agent-egress-proxy
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3128:3128"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 256
+    mem_limit: 512m
+    cpus: 1.0
+    volumes:
+      - ./squid.conf:/etc/squid/squid.conf:ro
+    networks:
+      - sandbox_internal
+      - egress
+
+networks:
+  sandbox_internal:
+    name: agent-sandbox-internal
+    driver: bridge
+    internal: true
+  egress:
+    name: agent-egress-net
+    driver: bridge
