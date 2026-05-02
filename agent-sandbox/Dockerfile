@@ -5,6 +5,7 @@ ARG USERNAME=agent
 ARG UID=1000
 ARG GID=1000
 ARG NODE_MAJOR=22
+ARG PI_VERSION
 
 ENV TZ=Etc/UTC \
     LANG=C.UTF-8 \
@@ -67,7 +68,8 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh \
 # Install Chromium only for Playwright/browser test usage
 RUN npx -y playwright@latest install --with-deps chromium
 
-RUN npm install -g @mariozechner/pi-coding-agent
+RUN echo "Installing Pi ${PI_VERSION}"
+RUN npm install -g @mariozechner/pi-coding-agent@${PI_VERSION}
 
 # Non-root user
 RUN useradd --uid "${UID}" --gid "${GID}" -m -s /bin/bash "${USERNAME}" || \
@@ -114,6 +116,7 @@ RUN node --version \
     && uv --version \
     && git --version \
     && rg --version \
-    && fd --version
+    && fd --version \
+    && pi --version
 
 CMD ["bash"]

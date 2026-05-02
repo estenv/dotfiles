@@ -63,6 +63,7 @@ def main --wrapped [...cmd: string] {
       -e UV_CACHE_DIR=/cache/uv
       -e DOTNET_CLI_TELEMETRY_OPTOUT=1
       -e DOTNET_NOLOGO=1
+      -e PI_OFFLINE=1
       -v $'($repos_root):/repos:rw'
     ]
     ++ $ro_mounts
