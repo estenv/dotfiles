@@ -4,6 +4,7 @@ export def --wrapped main [action?: string, ...rest: string] {
     match $action {
         'build' => { ^docker build -t agent-sandbox-runner $SCRIPT_DIR }
         'run' => { ag_run ...$rest }
+        'tmux' => { ag_tmux ...$rest }
         'proxy' => { ensure_proxy_running }
         'logs' => { ^docker logs -f agent-egress-proxy }
         _ => { ag_help }
@@ -27,9 +28,32 @@ def ensure_proxy_running [] {
     }
 }
 
+def ag_tmux [...cmd: string] {
+    let cwd = pwd | path expand
+    let window_name = $cwd | path basename
+    let session = 'agents'
+    let run_cmd = if ($cmd | is-empty) {
+        'ag run'
+    } else {
+        ['ag' 'run' ...$cmd] | str join ' '
+    }
+
+    let session_exists = (
+        (do -i { ^tmux has-session -t $session } | complete).exit_code == 0
+    )
+
+    if $session_exists {
+        ^tmux new-window -t $session -c $cwd -n $window_name $"nu -l -c '($run_cmd)'"
+    } else {
+        ^tmux new-session -d -s $session -c $cwd -n $window_name $"nu -l -c '($run_cmd)'"
+        ^tmux attach-session -t $session
+    }
+}
+
 def ag_run [...cmd: string] {
     ensure_proxy_running
-    ^nu ($SCRIPT_DIR | path join 'agent-run.nu') ...$cmd
+    let script = $SCRIPT_DIR | path join 'agent-run.nu'
+    ^nu $script ...$cmd
 }
 
 def ag_build [] {
