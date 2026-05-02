@@ -1,3 +1,5 @@
+const $SCRIPT_DIR = path self .
+
 export def --wrapped main [action?: string, ...rest: string] {
     match $action {
         'build' => { ^docker build -t agent-sandbox-runner (script_dir) }
@@ -8,10 +10,6 @@ export def --wrapped main [action?: string, ...rest: string] {
     }
 }
 
-def script_dir [] {
-    $env.HOME | path join 'repos' 'dotfiles' 'agent-sandbox' | path expand
-}
-
 def ensure_proxy_running [] {
     let running = (
         ^docker ps --filter 'name=^agent-egress-proxy$' --format json
@@ -20,14 +18,14 @@ def ensure_proxy_running [] {
     )
 
     if not $running {
-        let compose_file = script_dir | path join 'proxy-compose.yml'
+        let compose_file = $SCRIPT_DIR | path join 'proxy-compose.yml'
         ^docker compose -f $compose_file up -d egress-proxy
     }
 }
 
 def ag_run [...cmd: string] {
     ensure_proxy_running
-    ^nu (script_dir | path join 'agent-run.nu') ...$cmd
+    ^nu ($SCRIPT_DIR | path join 'agent-run.nu') ...$cmd
 }
 
 def ag_help [] {
