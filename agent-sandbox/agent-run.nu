@@ -32,6 +32,7 @@ def main --wrapped [...cmd: string] {
     let effective_cmd = if ($cmd | is-empty) { ['pi'] } else { $cmd }
 
     let ro_mounts = ^nu ($SCRIPT_DIR | path join "git-ro-mounts.nu") | from json
+    let dep_mounts = ^nu ($SCRIPT_DIR | path join "deps-mount.nu") | from json
 
     let uid = (do -i { ^id -u } | complete).stdout | str trim
     let gid = (do -i { ^id -g } | complete).stdout | str trim
@@ -67,6 +68,7 @@ def main --wrapped [...cmd: string] {
       -v $'($repos_root):/repos:rw'
     ]
     ++ $ro_mounts
+    ++ $dep_mounts
     ++ [
       -v $'($home_dir):/home/agent:rw'
       -v $'($cache_yarn):/cache/yarn:rw'
