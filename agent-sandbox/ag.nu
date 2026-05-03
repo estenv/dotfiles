@@ -6,7 +6,7 @@ export def --wrapped main [action?: string, ...rest: string] {
         'run' => { ag_run ...$rest }
         'tmux' => { ag_tmux ...$rest }
         'proxy' => { ensure_proxy_running }
-        'logs' => { ^docker logs -f agent-egress-proxy }
+        'logs' => { ^docker exec -it agent-egress-proxy tail -f /var/log/squid/access.log }
         _ => { ag_help }
     }
 }
