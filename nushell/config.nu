@@ -5,8 +5,8 @@ alias cdp = cd ~/proj/
 alias cdb = cd ~/Dropbox/
 alias cdl = cd ~/dl/
 alias zzip = /usr/bin/zip
-alias llama-start = docker compose -f ~/llama-docker/compose.yml up -d
-alias llama-stop = docker compose -f ~/llama-docker/compose.yml stop
+alias llama-start = docker compose -f ~/proj/llama-docker/compose.yml up -d
+alias llama-stop = docker compose -f ~/proj/llama-docker/compose.yml stop
 alias lg = lazygit
 alias ldo = lazydocker
 
