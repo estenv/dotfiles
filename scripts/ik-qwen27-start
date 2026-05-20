@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+model="/home/as/models/Qwen3.6-27B-MTP-IQ4_KS.gguf"
+log="$HOME/.cache/ik_llama_cpp_qwen27.log"
+pidfile="$HOME/.cache/ik_llama_cpp_qwen27.pid"
+
+mkdir -p "$(dirname "$log")"
+
+nohup ~/proj/ik_llama.cpp/build/bin/llama-server \
+  -m "$model" \
+  -ngl 99 \
+  -c 156000 \
+  -np 1 \
+  -fa on \
+  --multi-token-prediction \
+  --draft-max 4 \
+  --draft-p-min 0.0 \
+  --merge-qkv \
+  --merge-up-gate-experts \
+  --ctx-checkpoints 32 \
+  --no-mmproj-offload \
+  --cache-type-k q4_0 \
+  --cache-type-v q4_0 \
+  --mmproj /home/as/models/mmproj-F16.gguf \
+  --jinja \
+  --chat-template-file /home/as/models/qwen_chat_template_fixed.jinja \
+  --chat-template-kwargs '{"preserve-thinking":true}' \
+  --port 9998 \
+  >"$log" 2>&1 &
+
+echo $! > "$pidfile"
+echo "ik_llama.cpp started in background (pid: $!)"

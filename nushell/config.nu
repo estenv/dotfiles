@@ -29,3 +29,6 @@ source ~/.config/zoxide.nu
 #source ~/.cargo/env.nu
 source ~/.config/secrets.nu
 #source ~/.config/nushell/theme_mocha.nu
+
+alias ik-start = ik-qwen27-start
+alias ik-stop = ik-qwen27-stop

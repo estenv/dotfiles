@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+pidfile="$HOME/.cache/ik_llama_cpp_qwen27.pid"
+
+if [[ ! -f "$pidfile" ]]; then
+  echo "No pid file found."
+  exit 0
+fi
+
+pid=$(cat "$pidfile" | tr -d '[:space:]')
+
+if kill "$pid" 2>/dev/null; then
+  rm -f "$pidfile"
+  echo "Stopped ik_llama.cpp (pid: $pid)"
+else
+  rm -f "$pidfile"
+  echo "Failed to stop process (pid: $pid). It may already be gone."
+fi
