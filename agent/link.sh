@@ -6,12 +6,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 case "$AGENT" in
   pi)
-    PROMPT_TARGET="$HOME/.pi/agent/prompts"
-    SKILL_TARGET="$HOME/.pi/agent/skills"
+    PROMPT_NAME="prompts"
+    SKILL_NAME="skills"
+    AGENT_DIR="$HOME/.pi/agent"
     ;;
   opencode)
-    PROMPT_TARGET="$HOME/.config/opencode/commands"
-    SKILL_TARGET="$HOME/.config/opencode/skills"
+    PROMPT_NAME="commands"
+    SKILL_NAME="skills"
+    AGENT_DIR="$HOME/.config/opencode"
     ;;
   *)
     echo "Usage: $0 {pi|opencode}" >&2
@@ -19,44 +21,49 @@ case "$AGENT" in
     ;;
 esac
 
-link_dir() {
-  local src_dir="$1"
-  local target_dir="$2"
+build_targets() {
+  echo "$SCRIPT_DIR/prompts:$AGENT_DIR/$PROMPT_NAME"
+  echo "$SCRIPT_DIR/skills:$AGENT_DIR/$SKILL_NAME"
+  case "$AGENT" in
+    pi) echo "$SCRIPT_DIR/pi-extensions:$AGENT_DIR/extensions" ;;
+    opencode)
+      echo "$SCRIPT_DIR/opencode-tools:$AGENT_DIR/tools"
+      echo "$SCRIPT_DIR/opencode-plugins:$AGENT_DIR/plugins"
+      ;;
+  esac
+}
 
-  if [[ ! -d "$src_dir" ]]; then
-    echo "Error: source directory not found: $src_dir" >&2
+# Pre-check: abort if any non-symlink target already exists
+while IFS=: read -r src target; do
+  if [[ -e "$target" && ! -L "$target" ]]; then
+    echo "Error: $target already exists and is not a symlink, aborting" >&2
+    exit 1
+  fi
+done < <(build_targets)
+
+link_dir() {
+  local src="$1"
+  local target="$2"
+  local parent
+  parent="$(dirname "$target")"
+
+  if [[ ! -d "$src" ]]; then
+    echo "Error: source directory not found: $src" >&2
     return 1
   fi
 
-  mkdir -p "$target_dir"
+  mkdir -p "$parent"
 
-  local count=0
-  for file in "$src_dir"/*; do
-    [[ -f "$file" ]] || continue
-    local basename
-    basename="$(basename "$file")"
-    local link="$target_dir/$basename"
-
-    if [[ -L "$link" ]]; then
-      rm "$link"
-    elif [[ -e "$link" ]]; then
-      echo "Warning: $link exists and is not a symlink, skipping" >&2
-      continue
-    fi
-
-    ln -s "$file" "$link"
-    echo "Linked: $link -> $file"
-    count=$((count + 1))
-  done
-
-  if [[ "$count" -eq 0 ]]; then
-    echo "No files to link in $src_dir"
-  else
-    echo "Linked $count file(s) to $target_dir"
+  if [[ -L "$target" ]]; then
+    rm "$target"
   fi
+
+  ln -s "$src" "$target"
+  echo "Linked: $(basename "$src") -> $target"
 }
 
-link_dir "$SCRIPT_DIR/prompts" "$PROMPT_TARGET"
-link_dir "$SCRIPT_DIR/skills" "$SKILL_TARGET"
+while IFS=: read -r src target; do
+  link_dir "$src" "$target"
+done < <(build_targets)
 
 echo "Done."
