@@ -1,2 +1,0 @@
-## Dotfiles
-![screenshot](screenshot.png)
