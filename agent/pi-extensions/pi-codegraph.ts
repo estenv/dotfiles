@@ -1,4 +1,5 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { Container } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { spawn } from "node:child_process";
 import * as readline from "node:readline";
@@ -13,6 +14,36 @@ import { pathToFileURL } from "node:url";
  */
 
 const REQUEST_TIMEOUT_MS = 30000;
+
+const CODEGRAPH_MCP_INSTRUCTIONS_CUSTOM_TYPE = "codegraph-mcp-instructions";
+
+let codegraphMcpHandshakeAttempted = false;
+let codegraphMcpHandshakeInstructions: string | undefined;
+
+function sessionHasCustomMessage(ctx: any, customType: string): boolean {
+  try {
+    const entries = ctx?.sessionManager?.getEntries?.() ?? [];
+    return entries.some(
+      (e: any) =>
+        e?.type === "message" &&
+        e?.message?.role === "custom" &&
+        e?.message?.customType === customType
+    );
+  } catch {
+    return false;
+  }
+}
+
+async function fetchCodeGraphMcpInstructions(cwd: string): Promise<string | undefined> {
+  const client = new MCPClient(cwd);
+  try {
+    const rootUri = pathToFileURL(cwd).href;
+    const init = await client.initialize(rootUri);
+    return typeof init?.instructions === "string" ? init.instructions : undefined;
+  } finally {
+    client.close();
+  }
+}
 
 class MCPClient {
   private proc: ReturnType<typeof spawn>;
@@ -74,8 +105,8 @@ class MCPClient {
     }
   }
 
-  async initialize(rootUri: string): Promise<any> {
-    const result = await this.request("initialize", { rootUri });
+  async initialize(rootUri: string, signal?: AbortSignal): Promise<any> {
+    const result = await this.request("initialize", { rootUri }, signal);
     this.notify("initialized", {});
     return result;
   }
@@ -156,7 +187,9 @@ async function runMCPTool(
   const client = new MCPClient(cwd);
   try {
     const rootUri = pathToFileURL(cwd).href;
-    await client.initialize(rootUri);
+    // No instruction logic here — tool execution should be pure.
+    await client.initialize(rootUri, signal);
+
     const result = await client.callTool(toolName, args, signal);
     return result as { content: Array<{ type: "text"; text: string }>; isError?: boolean };
   } finally {
@@ -194,7 +227,92 @@ const projectPathProperty = Type.Optional(
   })
 );
 
+function renderEmptyToolResult(_result: any, _options: any, _theme: any, _context: any): Container {
+  // Intentionally no visible output for CodeGraph tool results.
+  // (Leave renderCall undefined so the default header shows the tool name.)
+  return new Container();
+}
+
 export default function (pi: ExtensionAPI) {
+  // ──────────────────────────────────────────────────────────────────────────
+  // One-time explicit MCP handshake (NOT tied to tool execution)
+  // ──────────────────────────────────────────────────────────────────────────
+
+  async function ensureCodeGraphMcpInstructions(ctx: any): Promise<void> {
+    // If already present in the session, don't respawn MCP just to re-fetch.
+    if (sessionHasCustomMessage(ctx, CODEGRAPH_MCP_INSTRUCTIONS_CUSTOM_TYPE)) {
+      codegraphMcpHandshakeAttempted = true;
+      return;
+    }
+
+    if (codegraphMcpHandshakeAttempted) return;
+    codegraphMcpHandshakeAttempted = true;
+
+    try {
+      codegraphMcpHandshakeInstructions = await fetchCodeGraphMcpInstructions(ctx.cwd);
+    } catch {
+      // If CodeGraph isn't available, tools will surface the error when called.
+      codegraphMcpHandshakeInstructions = undefined;
+      return;
+    }
+
+    if (typeof codegraphMcpHandshakeInstructions !== "string") return;
+    if (codegraphMcpHandshakeInstructions.length === 0) return;
+
+    // Persist into the session before any CodeGraph tool usage.
+    // deliverAs: "nextTurn" ensures we don't interrupt; session_start runs before first prompt anyway.
+    try {
+      pi.sendMessage(
+        {
+          customType: CODEGRAPH_MCP_INSTRUCTIONS_CUSTOM_TYPE,
+          content: codegraphMcpHandshakeInstructions,
+          display: false,
+          details: { source: "codegraph-mcp-handshake" },
+        },
+        { deliverAs: "nextTurn" }
+      );
+    } catch {
+      // If persistence fails here, before_agent_start will still inject for the next turn.
+    }
+  }
+
+  // Do the handshake as early as possible.
+  pi.on("session_start", async (_event, ctx) => {
+    // Reset per-runtime state.
+    codegraphMcpHandshakeAttempted = false;
+    codegraphMcpHandshakeInstructions = undefined;
+
+    await ensureCodeGraphMcpInstructions(ctx);
+  });
+
+  // Safety net: if session_start injection didn't persist for any reason,
+  // ensure the message exists before the agent decides whether to use CodeGraph.
+  pi.on("before_agent_start", async (_event, ctx) => {
+    await ensureCodeGraphMcpInstructions(ctx);
+
+    if (
+      !sessionHasCustomMessage(ctx, CODEGRAPH_MCP_INSTRUCTIONS_CUSTOM_TYPE) &&
+      typeof codegraphMcpHandshakeInstructions === "string" &&
+      codegraphMcpHandshakeInstructions.length > 0
+    ) {
+      return {
+        message: {
+          customType: CODEGRAPH_MCP_INSTRUCTIONS_CUSTOM_TYPE,
+          content: codegraphMcpHandshakeInstructions,
+          display: false,
+          details: { source: "codegraph-mcp-handshake" },
+        },
+      };
+    }
+
+    return;
+  });
+
+  pi.on("session_shutdown", async () => {
+    codegraphMcpHandshakeAttempted = false;
+    codegraphMcpHandshakeInstructions = undefined;
+  });
+
   // ──────────────────────────────────────────────────────────────────────────
   // Tool: codegraph_search
   // ──────────────────────────────────────────────────────────────────────────
@@ -250,6 +368,7 @@ export default function (pi: ExtensionAPI) {
         return handleError(err, "search");
       }
     },
+    renderResult: renderEmptyToolResult,
   });
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -294,6 +413,7 @@ export default function (pi: ExtensionAPI) {
         return handleError(err, "context");
       }
     },
+    renderResult: renderEmptyToolResult,
   });
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -334,6 +454,7 @@ export default function (pi: ExtensionAPI) {
         return handleError(err, "callers");
       }
     },
+    renderResult: renderEmptyToolResult,
   });
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -374,6 +495,7 @@ export default function (pi: ExtensionAPI) {
         return handleError(err, "callees");
       }
     },
+    renderResult: renderEmptyToolResult,
   });
 
   // ────────────────────────────────────────────────────────────────────────
@@ -414,6 +536,7 @@ export default function (pi: ExtensionAPI) {
         return handleError(err, "impact");
       }
     },
+    renderResult: renderEmptyToolResult,
   });
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -455,6 +578,7 @@ export default function (pi: ExtensionAPI) {
         return handleError(err, "node");
       }
     },
+    renderResult: renderEmptyToolResult,
   });
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -501,6 +625,7 @@ export default function (pi: ExtensionAPI) {
         return handleError(err, "explore");
       }
     },
+    renderResult: renderEmptyToolResult,
   });
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -537,6 +662,7 @@ export default function (pi: ExtensionAPI) {
         return handleError(err, "status");
       }
     },
+    renderResult: renderEmptyToolResult,
   });
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -586,6 +712,7 @@ export default function (pi: ExtensionAPI) {
         return handleError(err, "files");
       }
     },
+    renderResult: renderEmptyToolResult,
   });
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -595,9 +722,8 @@ export default function (pi: ExtensionAPI) {
     description: "Check CodeGraph MCP server connectivity",
     handler: async (_args, ctx) => {
       try {
-        const result = await runMCPTool(ctx.cwd, "codegraph_status", {});
-        const text = result.content.map((c) => c.text).join("\n");
-        ctx.ui.notify(`CodeGraph MCP connected.\n${text}`, "success");
+        await runMCPTool(ctx.cwd, "codegraph_status", {});
+        ctx.ui.notify("CodeGraph MCP connected.", "success");
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         ctx.ui.notify(`CodeGraph MCP connection failed: ${message}`, "error");
