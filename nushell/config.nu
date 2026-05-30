@@ -30,8 +30,5 @@ source ~/.config/zoxide.nu
 source ~/.config/secrets.nu
 #source ~/.config/nushell/theme_mocha.nu
 
-alias ik-qwen27-start = bash ~/repos/dotfiles/scripts/ik-qwen27-start
-alias ik-qwen27-stop = bash ~/repos/dotfiles/scripts/ik-qwen27-stop
-
-alias ik-start = ik-qwen27-start
-alias ik-stop = ik-qwen27-stop
+alias ik-start = bash ~/repos/dotfiles/scripts/ik-qwen27-start
+alias ik-stop = bash ~/repos/dotfiles/scripts/ik-qwen27-stop
