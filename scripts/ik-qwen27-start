@@ -25,6 +25,7 @@ nohup ~/proj/ik_llama.cpp/build/bin/llama-server \
   --chat-template-file /home/as/models/qwen_chat_template_fixed.jinja \
   --chat-template-kwargs '{"preserve-thinking":true}' \
   --port 9998 \
+  --log-file "$(dirname "$log")/ik_llama_cpp_qwen27_server" \
   >"$log" 2>&1 &
 
 echo $! > "$pidfile"
